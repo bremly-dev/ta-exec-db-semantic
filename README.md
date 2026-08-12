@@ -10,11 +10,7 @@ before building the pipeline or dashboard, not to reproduce a full enterprise pl
 
 ## The problem this solves
 
-Most TA dashboards get built the other way round: someone drags fields into Power BI, and the
-metric definitions get decided implicitly by whatever formula ends up in a DAX measure. That
-works until two people report different "time to fill" numbers in the same meeting.
-
-This project starts from the opposite direction: **agree the metric definitions first, in
+This project starts with: **agree the metric definitions first, in
 writing.** Each metric states what it means, how it's calculated, what time window it uses and
 why, which table it comes from, and how it tends to go wrong. That becomes the contract the data
 model and dashboard get built against.
