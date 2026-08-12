@@ -1,0 +1,111 @@
+# ---------------------------------------------------------------
+# Metric Definition — M02
+# ---------------------------------------------------------------
+metric_id: M02
+name: forecasted_attainment
+display_name: "Forecasted Attainment (Month-End & Year-End)"
+business_area: "Hiring Plan & Delivery"
+status: draft
+version: "1.3"
+last_updated: 2026-08-13
+
+definition:
+  business: >
+    Where offer accepts are projected to land if the pipeline and current pace
+    continue — checked at two horizons. The month-end view shows what's
+    controllable this week. The year-end view shows whether the annual
+    commitment is genuinely on track, since some roles will clear soon but
+    just not before month-end.
+  executive_question: "Are we on pace to hit this month, and the year overall?"
+
+calculation:
+  formula: |
+    Days Remaining (Month) = Last Day of Current Month - Today
+    Days Remaining (Year)  = Last Day of Current Year - Today
+
+    Forecast Offers (EOM) =
+        Offers Accepted Month-to-Date (1st of current month → today)
+      + (Open Reqs x Expected Offer-Accept Probability within Days Remaining (Month))
+        -- i.e. actuals up to today, plus projected accepts from today → month end
+
+    Forecast Offers (Full Year) =
+        Offers Accepted Year-to-Date (1 Jan → today — same figure as M01's actual YTD)
+      + (Open Reqs x Expected Offer-Accept Probability within Days Remaining (Year))
+        -- i.e. actuals up to today, plus projected accepts from today → year end
+
+    Forecasted Attainment % (EOM) =
+        Forecast Offers (EOM) / Planned Offers for Current Month
+
+    Forecasted Attainment % (Full Year) =
+        Forecast Offers (Full Year) / Planned Offers for Full Year
+        (full annual plan total — a different slice of the same fct_hiring_plan
+        table M01 uses, not M01's own to-date denominator)
+  measurement_window:
+    type: point_in_time
+    detail: >
+      Two forecast horizons evaluated as of today: (1) through the end of the
+      current month, and (2) through the end of the current year. Both
+      refreshed and discussed weekly, side by side. The year-end window
+      shortens as the year progresses, the same way the month-end window
+      already does — just over a much longer arc.
+    rationale: >
+      The month-end horizon is checkable against the pipeline leadership can
+      already see, and it is the only horizon where action this week still
+      changes the outcome. Year-end, not quarter-end, is the second horizon
+      because the annual number is the actual commitment — the same one M01
+      tracks to-date and the one the hiring plan is built around. A quarterly
+      checkpoint is still only an intermediate marker; leadership's real
+      question is whether the year lands where it was committed to. The
+      year-end forecast answers that directly, by taking the same
+      year-to-date figure M01 reports and projecting it forward to close.
+      Reading month-end and year-end together tells leadership whether a
+      miss is "will land soon" or "genuinely behind for the year."
+  notes:
+    - "Both horizons reuse the SAME offer-accept-probability curve, scoped to the relevant days remaining. Do not build two separate probability models — that is how the two numbers start disagreeing for reasons nobody can explain."
+    - "Planned Offers for Full Year is the full annual total of the same phased plan M01 uses — not a separately entered number. Note this is a different slice of the plan than M01's own denominator, which is to-date, not full-year."
+    - "The 'Offers Accepted To Date' figure inside the year-end forecast is the SAME number as M01's actual year-to-date attainment. The forecast literally starts from M01's headline and projects it forward — pull both from the same query, or they will drift apart between refreshes."
+    - "`forecast_horizon` slicer takes two values: `month_end` and `year_end`."
+    - "Present month-end and year-end attainment side by side, not on separate pages. The gap between them is the signal, not either number alone."
+    - "Present as a range (conservative / expected) where data supports it, for both horizons. A single point estimate invites false precision."
+    - "Use offer-accept-rate-by-elapsed-time curves per job family. A flat rate will systematically over-forecast late in either window."
+
+source:
+  primary_table: fct_requisition
+  supporting_tables:
+    - fct_offer
+    - fct_hiring_plan
+    - gold_ref_fill_benchmark
+  grain: "Evaluated at requisition grain, rolled up to business unit x job family x horizon"
+  key_columns:
+    - requisition_id
+    - requisition_status
+    - current_stage
+    - target_hire_date
+    - job_family_key
+  precomputed_upstream:
+    - column: offer_accept_probability_curve
+      note: "Historical accept rate by elapsed days, per job family. Same curve feeds both horizons. Governed reference, reviewed by TA leadership."
+
+semantic_model:
+  data_type: percentage
+  format_string: "0.0%"
+  aggregation: non_additive
+  default_filters:
+    - "requisition_status = 'open' (both horizons evaluate the same open-requisition base)"
+  supported_slicers:
+    - business_unit
+    - job_family
+    - critical_role_flag
+    - forecast_horizon
+
+governance:
+  known_pitfalls:
+    - "This is the one metric that spans both plan grain and requisition grain. Probabilities are computed per req, then aggregated to meet the plan."
+    - "The two horizons must share the same probability curve and the same open-requisition base. Divergent inputs make the two attainment percentages incomparable, which defeats the reason for reporting them together."
+    - "If year-end Planned Offers is built as its own number instead of summing the full phased plan, it will silently drift from the plan baseline over time."
+    - "The actuals term and the projection term must split at TODAY, not overlap. If the actuals term is read as 'all accepts through month end' rather than 'accepts month-to-date', the projection re-counts offers already accepted and the forecast overshoots. Test this on a mid-month refresh before release."
+    - "Do not over-engineer the probability model in v1. A transparent, explainable rule beats an accurate black box on an executive page."
+    - "Forecast accuracy should itself be tracked — compare prior forecasts against actuals monthly, for both horizons, or the number will quietly lose credibility."
+    - "The year-end window is far wider early in the year than the month-end window ever is — a January forecast for December rests on very little evidence. Show a confidence range or flag low-evidence periods explicitly, rather than presenting a January year-end forecast with the same visual weight as a November one."
+  restatement_risk: medium
+  related_metrics: [M01, M03, M06]
