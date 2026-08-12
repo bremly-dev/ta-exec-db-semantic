@@ -1,4 +1,4 @@
-# Executive Talent Acquisition Metric Dictionary
+# Talent Acquisition Metric Dictionary
 
 A governed set of metrics for an executive Talent Acquisition (TA) dashboard, designed to sit on
 a gold-layer lakehouse and be served through a Power BI semantic model.
