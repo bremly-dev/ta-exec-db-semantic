@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------
+# Metric Definition — M03
+# ---------------------------------------------------------------
+metric_id: M03
+name: offers_at_risk
+display_name: "Offers at Risk"
+business_area: "Hiring Plan & Delivery"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    The number of open requisitions projected to miss their target hire date —
+    unlikely to reach an accepted offer in time — and the offers those
+    requisitions represent.
+  executive_question: "What is about to go wrong, and where do I intervene now?"
+
+calculation:
+  formula: |
+    For each open requisition:
+      Projected Offer-Accept Date = Today + Expected Remaining Days
+                                    (based on current stage and job family)
+      At Risk = Projected Offer-Accept Date > Target Hire Date
+
+    Offers at Risk = COUNT(open reqs where At Risk = TRUE)
+  measurement_window:
+    type: point_in_time
+    detail: "Evaluated against today's date and each requisition's own target hire date. No historical window."
+    rationale: >
+      Risk is a live property of an open requisition, not a period aggregate.
+      A rolling or to-date framing would be meaningless — the question is about
+      the state of the pipeline right now.
+  notes:
+    - "Expected remaining days must come from historical median stage durations for that job family, not a single global average."
+    - "Break out by business unit, job family, and critical_role_flag so leadership sees WHERE the risk sits."
+    - "Optional severity banding (at risk / severely at risk) based on days past target."
+    - "This metric should drive an action queue, not just a tile. Surface the specific requisitions."
+
+source:
+  primary_table: fct_requisition
+  supporting_tables:
+    - fct_application_stage
+    - gold_ref_stage_benchmark
+  grain: "One row per open requisition"
+  key_columns:
+    - requisition_id
+    - requisition_status
+    - current_stage
+    - target_hire_date
+    - job_family_key
+    - critical_role_flag
+  precomputed_upstream:
+    - column: expected_remaining_days
+      note: "Median remaining duration from current stage to accepted offer, by job family."
+
+semantic_model:
+  data_type: integer
+  format_string: "#,##0"
+  aggregation: additive
+  default_filters:
+    - "requisition_status = 'open'"
+  supported_slicers:
+    - business_unit
+    - job_family
+    - critical_role_flag
+    - recruiter
+    - severity_band
+
+governance:
+  known_pitfalls:
+    - "Cannot detect approved plan lines where no requisition has been opened. Those are guaranteed misses this metric is blind to — pair with an unopened-demand view."
+    - "Requisitions on hold will appear at risk unless the hold period is handled. Decide whether held reqs are excluded or flagged separately."
+    - "Sensitive to stage benchmark quality. Refresh benchmarks on a set cadence and version them."
+  restatement_risk: low
+  related_metrics: [M01, M02, M05, M12]

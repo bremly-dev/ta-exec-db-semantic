@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------
+# Metric Definition — M08
+# ---------------------------------------------------------------
+metric_id: M08
+name: source_effectiveness
+display_name: "Source Effectiveness (Hire Yield by Source)"
+business_area: "Funnel & Conversion"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    Which sourcing channels actually produce hires — not which produce the most
+    applicants.
+  executive_question: "Where should the next sourcing dollar go?"
+
+calculation:
+  formula: |
+    Source Hire Yield % =
+        Accepted Offers from Source / Candidates Entering Funnel from Source
+
+    Source Share of Hires =
+        Accepted Offers from Source / Total Accepted Offers
+  measurement_window:
+    type: rolling
+    detail: "Rolling 12 months, anchored on candidate entry date so the full funnel has time to resolve."
+    rationale: >
+      Source yield needs a long window for two reasons. Channel volumes are uneven
+      month to month, and a candidate entering today may not accept an offer for
+      several months — a short window would credit the channel with the entry but
+      not the eventual hire, understating yield for slower channels like referrals.
+  notes:
+    - "Pair yield with volume ALWAYS. A channel with 40% yield and four candidates is not a strategy."
+    - "Use first-touch or last-touch attribution consistently and state which on the page. Mixing them is the most common source of disputes about these numbers."
+    - "Executive-level groupings that matter: referrals, agency, direct sourcing, job boards, internal mobility."
+
+source:
+  primary_table: fct_source_performance
+  supporting_tables:
+    - fct_application
+    - fct_offer
+    - gold_dim_source
+  grain: "One row per source channel x period x job family"
+  key_columns:
+    - source_key
+    - attribution_type
+    - candidates_entered
+    - offers_accepted
+    - period_month
+  precomputed_upstream:
+    - column: attributed_source_key
+      note: "Attribution resolved in gold ETL using a single documented rule (first-touch or last-touch)."
+
+semantic_model:
+  data_type: percentage
+  format_string: "0.0%"
+  aggregation: non_additive
+  default_filters: []
+  supported_slicers:
+    - source_channel
+    - job_family
+    - business_unit
+    - period
+
+governance:
+  known_pitfalls:
+    - "Attribution rule changes invalidate all history. Version the rule and never change it silently."
+    - "Small-volume channels produce extreme yields. Suppress or flag channels below a minimum candidate count."
+    - "Yield alone can justify cutting a low-yield channel that supplies necessary top-of-funnel volume. Read alongside M06 before acting."
+  restatement_risk: medium
+  related_metrics: [M06, M07]

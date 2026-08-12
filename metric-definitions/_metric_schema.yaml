@@ -1,0 +1,51 @@
+# ---------------------------------------------------------------
+# Metric Definition Schema
+# Executive Talent Acquisition Dashboard
+# ---------------------------------------------------------------
+# Every metric_NN_*.yaml file in this folder follows this shape.
+# Keep the key order consistent across files — it makes diffs
+# readable and lets the set be validated as a group.
+# ---------------------------------------------------------------
+
+metric_id: string            # M01..M15, stable identifier — never reuse
+name: string                 # snake_case technical name
+display_name: string         # what appears on the dashboard
+business_area: string        # Hiring Plan & Delivery | Recruitment Operations |
+                             # Funnel & Conversion | Offer Performance |
+                             # Recruiter Capacity | Hiring Outcomes
+status: string               # draft | review | approved | deprecated
+version: string
+last_updated: date
+
+definition:
+  business: string           # plain-language meaning, no formulas
+  executive_question: string # the single question this metric answers
+
+calculation:
+  formula: string            # pseudocode, not DAX — DAX lives in the model
+  measurement_window:
+    type: string             # point_in_time | to_date | rolling | cohort
+    detail: string
+    rationale: string        # WHY this window — required, not optional
+  notes: list[string]        # calculation rules that must not be lost
+
+source:
+  primary_table: string
+  supporting_tables: list[string]
+  grain: string              # one row per WHAT
+  key_columns: list[string]
+  precomputed_upstream: list # columns computed in gold ETL, not in the model
+    # - column: string
+    #   note: string
+
+semantic_model:
+  data_type: string          # percentage | integer | decimal | days | score
+  format_string: string
+  aggregation: string        # additive | semi_additive | non_additive
+  default_filters: list[string]
+  supported_slicers: list[string]
+
+governance:
+  known_pitfalls: list[string]   # the ways this metric goes wrong
+  restatement_risk: string       # high | medium | low
+  related_metrics: list[string]

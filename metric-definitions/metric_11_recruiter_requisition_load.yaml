@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------
+# Metric Definition — M11
+# ---------------------------------------------------------------
+metric_id: M11
+name: recruiter_requisition_load
+display_name: "Recruiter Requisition Load (Complexity-Weighted)"
+business_area: "Recruiter Capacity"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    How many open requisitions each recruiter is carrying, weighted so that a
+    hard-to-fill senior role counts for more than a high-volume entry-level role.
+  executive_question: "Is workload distributed fairly, and who is overloaded?"
+
+calculation:
+  formula: |
+    Weighted Load = SUM( Open Reqs x Complexity Weight ) per recruiter
+  measurement_window:
+    type: point_in_time
+    detail: "Snapshot as of today, trended weekly."
+    rationale: >
+      Load is a current-state measure — the question is who is carrying too much
+      right now. A period average would mask the peak, which is exactly the
+      moment when quality and recruiter retention are at risk.
+  notes:
+    - "Complexity weights from a governed reference table, e.g. volume 0.5 / standard 1.0 / senior 2.0 / executive 3.0, calibrated from historical effort or time to fill."
+    - "Report DISTRIBUTION — median plus count of recruiters above the healthy threshold. The average always looks fine while individuals are drowning."
+    - "Weights are a business assumption, not code. They should be reviewable and versioned by TA leadership."
+
+source:
+  primary_table: fct_requisition
+  supporting_tables:
+    - gold_dim_recruiter
+    - gold_ref_role_complexity
+  grain: "One row per open requisition, aggregated per recruiter"
+  key_columns:
+    - requisition_id
+    - requisition_status
+    - recruiter_key
+    - complexity_tier
+  precomputed_upstream:
+    - column: complexity_weight
+      note: "Resolved from gold_ref_role_complexity in the gold ETL so all consumers share one weighting."
+
+semantic_model:
+  data_type: decimal
+  format_string: "#,##0.0"
+  aggregation: additive
+  default_filters:
+    - "requisition_status = 'open'"
+  supported_slicers:
+    - recruiter
+    - recruiting_team
+    - business_unit
+    - job_family
+
+governance:
+  known_pitfalls:
+    - "Reqs on hold still sit in a recruiter's queue but consume little effort. Decide whether they count toward load."
+    - "Shared or co-owned requisitions double-count unless ownership is resolved upstream."
+    - "Overloaded recruiters are the leading indicator of both slipping time-to-fill and recruiter attrition. Do not read this metric alone — see M12 and M13."
+  restatement_risk: low
+  related_metrics: [M12, M13]

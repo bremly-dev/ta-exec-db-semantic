@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------
+# Metric Definition — M09
+# ---------------------------------------------------------------
+metric_id: M09
+name: offer_acceptance_rate
+display_name: "Offer Acceptance Rate"
+business_area: "Offer Performance"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    The percentage of offers extended that candidates accept.
+  executive_question: "Are we winning the candidates we choose?"
+
+calculation:
+  formula: |
+    Offer Acceptance Rate =
+        Offers Accepted
+      / Offers Extended
+      (same offer cohort, tracked to outcome)
+  measurement_window:
+    type: cohort
+    detail: >
+      Cohort window: offers EXTENDED in the last rolling 90 days that have reached
+      a decision. Anchored on extend date, not decision date.
+    rationale: >
+      Offers span periods. Dividing accepts in a month by extends in that month
+      compares two different populations and the ratio becomes meaningless.
+      Anchoring on extend date and following the cohort to its decision is the
+      only definition that survives a volume change.
+  notes:
+    - "Exclude offers still pending decision from the denominator, OR show them separately as 'undecided'. Be explicit about which choice was made."
+    - "Segment by job family, level, and business unit. A blended 88% can hide a 60% rate in engineering."
+    - "Attach decline reasons (compensation, counteroffer, location, competing offer, timing) as a drill-through."
+
+source:
+  primary_table: fct_offer
+  supporting_tables:
+    - gold_dim_decline_reason
+  grain: "One row per offer"
+  key_columns:
+    - offer_id
+    - requisition_id
+    - offer_extended_date
+    - offer_decision_date
+    - offer_status
+    - decline_reason_key
+  precomputed_upstream:
+    - column: offer_decision_flag
+      note: "Marks offers that have reached a terminal decision, so the cohort denominator is unambiguous."
+
+semantic_model:
+  data_type: percentage
+  format_string: "0.0%"
+  aggregation: non_additive
+  default_filters:
+    - "offer_decision_flag = TRUE"
+  supported_slicers:
+    - job_family
+    - job_level
+    - business_unit
+    - recruiter
+    - decline_reason
+
+governance:
+  known_pitfalls:
+    - "Same-period denominator is the classic error. Enforce the cohort at model level, not by convention."
+    - "A falling rate is usually a MARKET signal, not a recruiting failure — comp bands slipping, slow process, weakening brand. Read alongside M04 and M05 before assigning blame."
+    - "Rescinded offers (company-withdrawn) must not be counted as candidate declines. Separate them — see M10."
+  restatement_risk: medium
+  related_metrics: [M04, M05, M07, M10]

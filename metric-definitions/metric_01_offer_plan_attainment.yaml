@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------
+# Metric Definition — M01
+# ---------------------------------------------------------------
+metric_id: M01
+name: offer_plan_attainment_to_date
+display_name: "Offer Plan Attainment (To Date)"
+business_area: "Hiring Plan & Delivery"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    How much of the hiring plan has been delivered so far this year, measured at
+    accepted offer, compared with how much should have been delivered by this point.
+    This is the headline number of the dashboard.
+  executive_question: "Are we delivering what we committed to?"
+
+calculation:
+  formula: |
+    Offer Plan Attainment % =
+        Actual Offers Accepted To Date
+      / Planned Offers To Date
+  measurement_window:
+    type: to_date
+    detail: "Fiscal year to date, with a To Date / Full Year toggle on the page."
+    rationale: >
+      Executives compare against commitment, and commitment is set for the year.
+      A to-date view is the only fair comparison mid-year; the Full Year toggle
+      exists because leadership asks both questions in the same meeting.
+  notes:
+    - "Counted at accepted offer, not start date. Accepted offer is earlier and more controllable; starts lag by weeks and would make the headline stale."
+    - "Planned-to-date comes from the phased monthly plan, NOT full-year plan divided by twelve. Hiring plans are rarely flat."
+    - "Actual start can be shown as a secondary reconciliation view, never as the headline."
+
+source:
+  primary_table: fct_offer
+  supporting_tables:
+    - fct_hiring_plan
+    - gold_dim_date
+    - gold_dim_org
+    - gold_dim_job_family
+  grain: "Comparison grain: business unit x job family x month"
+  key_columns:
+    - offer_status
+    - offer_accepted_date
+    - business_unit_key
+    - job_family_key
+    - planned_offers
+  precomputed_upstream: []
+
+semantic_model:
+  data_type: percentage
+  format_string: "0.0%"
+  aggregation: non_additive
+  default_filters:
+    - "offer_status = 'accepted'"
+  supported_slicers:
+    - business_unit
+    - job_family
+    - month
+    - critical_role_flag
+
+governance:
+  known_pitfalls:
+    - "fct_offer and fct_hiring_plan have NO row-level key in common. Join only through conformed dimensions — a direct relationship creates a many-to-many and wrong totals."
+    - "Plan lines with no requisition opened are invisible to this metric and to M03. Track that gap separately."
+    - "Renege and rescind restate accepted-offer counts between refreshes. Show an 'as of' stamp."
+  restatement_risk: high
+  related_metrics: [M02, M03, M10]

@@ -1,0 +1,74 @@
+# ---------------------------------------------------------------
+# Metric Definition — M05
+# ---------------------------------------------------------------
+metric_id: M05
+name: median_time_in_stage
+display_name: "Median Time in Stage"
+business_area: "Recruitment Operations"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    How long candidates sit in each step of the process — sourcing, screening,
+    hiring manager review, interview, offer.
+  executive_question: "Where is the bottleneck, and who owns it?"
+
+calculation:
+  formula: |
+    Time in Stage = Stage Exit Timestamp - Stage Entry Timestamp
+    Median Time in Stage = MEDIAN by stage, by job family, by period
+
+    Currently Waiting = MEDIAN(Today - Stage Entry Timestamp)
+                        for candidates still IN the stage
+  measurement_window:
+    type: rolling
+    detail: "Rolling 90 days by stage-exit date, plus a live 'currently waiting' figure with no window."
+    rationale: >
+      Two figures are needed and they answer different questions. The rolling
+      completed-stage median shows the pattern; the live waiting figure shows the
+      backlog right now — and the waiting figure is usually the more urgent one,
+      because those candidates can still be lost.
+  notes:
+    - "Calculate the median on candidates who have EXITED the stage. Including in-flight candidates truncates the distribution downward."
+    - "Attribute each stage to its owner (recruiter-owned vs hiring-manager-owned). This is what makes the metric actionable."
+    - "Surfacing hiring-manager-owned delay is often the single most valuable insight in the weekly meeting — it moves the conversation off TA."
+
+source:
+  primary_table: fct_application_stage
+  supporting_tables:
+    - fct_requisition
+    - gold_dim_stage
+  grain: "One row per candidate x requisition x stage"
+  key_columns:
+    - application_id
+    - requisition_id
+    - stage_key
+    - stage_entry_ts
+    - stage_exit_ts
+    - stage_owner_type
+  precomputed_upstream:
+    - column: days_in_stage
+      note: "Computed in gold ETL from entry and exit timestamps. Null while the candidate is still in stage."
+
+semantic_model:
+  data_type: days
+  format_string: "#,##0.0"
+  aggregation: non_additive
+  default_filters:
+    - "stage_exit_ts IS NOT NULL (for the completed median)"
+  supported_slicers:
+    - stage
+    - stage_owner_type
+    - job_family
+    - business_unit
+    - recruiter
+
+governance:
+  known_pitfalls:
+    - "Candidates who withdraw mid-stage exit the stage without progressing. Decide whether they count — they inflate the median if left in."
+    - "Stage definitions drift when the ATS workflow is reconfigured. Version the stage dimension or historical comparisons break silently."
+    - "Weekend and holiday time is included unless the upstream job uses business days. Pick one and document it."
+  restatement_risk: low
+  related_metrics: [M04, M07, M09]

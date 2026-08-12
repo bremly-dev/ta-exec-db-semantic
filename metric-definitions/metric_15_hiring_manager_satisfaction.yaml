@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------
+# Metric Definition — M15
+# ---------------------------------------------------------------
+metric_id: M15
+name: hiring_manager_satisfaction
+display_name: "Hiring Manager Satisfaction"
+business_area: "Hiring Outcomes"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    How satisfied hiring managers are with the recruiting process and candidate
+    quality, collected via a short survey at requisition close.
+  executive_question: "Does the business still trust TA?"
+
+calculation:
+  formula: |
+    HM Satisfaction = MEAN(survey score)
+                      or NPS = %Promoters - %Detractors
+
+    Response Rate   = Responses in window / Surveys Sent in window
+  measurement_window:
+    type: rolling
+    detail: >
+      Rolling 90 days, anchored on RESPONSE date (not requisition close date).
+      Minimum 20 responses required before a score is published for any slice.
+    rationale: >
+      Rolling rather than quarter-to-date, because a QTD figure resets to near-zero
+      responses every three months and is unusable in the first weeks of each
+      quarter. 90 days rather than 30, because survey response volume is low and a
+      30-day window often rests on a handful of responses where one unhappy manager
+      swings the score several points. Not longer than 90, because a 6- or 12-month
+      window takes half a year to reflect a real deterioration, defeating the point
+      of an early-warning metric. Anchored on response date because managers often
+      reply weeks after close — anchoring on close date makes the recent end of the
+      window look artificially thin and quietly restates as late replies arrive.
+  notes:
+    - "Always publish RESPONSE RATE alongside the score. A 9.1 from 12% of managers is not a fact, it is a rumour."
+    - "Report as a trend of rolling values, not a single point. Direction matters more than level — absolute satisfaction scores are hard to benchmark meaningfully."
+    - "Below the 20-response threshold, suppress the score for that slice and show the response count instead."
+    - "Suppression will leave some business-unit and recruiter tiles blank. That is uncomfortable but correct — a score built on five responses gets someone questioned on noise."
+
+source:
+  primary_table: fct_survey_response
+  supporting_tables:
+    - fct_requisition
+    - gold_dim_hiring_manager
+  grain: "One row per survey response (requisition x hiring manager)"
+  key_columns:
+    - survey_response_id
+    - requisition_id
+    - hiring_manager_key
+    - response_date
+    - requisition_close_date
+    - score
+    - sentiment
+    - theme_tags
+  precomputed_upstream:
+    - column: nps_band
+      note: "Promoter / passive / detractor band derived from score, so the banding rule lives in one place."
+
+semantic_model:
+  data_type: score
+  format_string: "0.0"
+  aggregation: non_additive
+  default_filters:
+    - "response_date within rolling 90 days"
+    - "response_count >= 20 (else suppress)"
+  supported_slicers:
+    - business_unit
+    - recruiter
+    - job_family
+    - theme_tag
+
+governance:
+  known_pitfalls:
+    - "Response bias: managers with a bad experience respond more readily. Read the score alongside response rate and treat the level with caution."
+    - "Anchoring on close date instead of response date causes silent restatement of recent periods."
+    - "Every other metric on this dashboard can look healthy while the business quietly loses confidence. This is the metric that catches that — do not drop it for being 'soft'."
+  restatement_risk: medium
+  related_metrics: [M04, M05, M13, M14]

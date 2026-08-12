@@ -1,0 +1,75 @@
+# ---------------------------------------------------------------
+# Metric Definition — M07
+# ---------------------------------------------------------------
+metric_id: M07
+name: stage_conversion_rate
+display_name: "Stage Conversion Rate (Pass-Through)"
+business_area: "Funnel & Conversion"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    The percentage of candidates who move from one stage of the process to the next.
+  executive_question: "Why is the funnel leaking, and at which step?"
+
+calculation:
+  formula: |
+    Stage Conversion % =
+        Candidates Entering Next Stage
+      / Candidates Entering Current Stage
+      (same cohort, tracked through to outcome)
+  measurement_window:
+    type: cohort
+    detail: >
+      Cohort window: candidates who ENTERED the stage in the last rolling 90 days
+      and have reached a terminal outcome. Anchored on stage-entry date, not
+      reporting date.
+    rationale: >
+      Measuring entries and exits within the same calendar window produces
+      misleading numbers whenever volume is changing — a hiring surge makes
+      conversion look worse simply because more people are still in flight.
+      Cohort tracking follows the same group of candidates to their outcome,
+      which is the only way the ratio means what it appears to mean.
+  notes:
+    - "Key executive ratios: application to screen, screen to interview, interview to offer."
+    - "Benchmark against a rolling prior period, not an industry figure. Internal trend is far more reliable than external comparison."
+    - "Candidates still in flight must be excluded from the cohort or shown separately — never counted as non-converters."
+
+source:
+  primary_table: fct_funnel_conversion
+  supporting_tables:
+    - fct_application_stage
+    - gold_dim_stage
+  grain: "One row per stage x cohort period x job family"
+  key_columns:
+    - cohort_month
+    - from_stage_key
+    - to_stage_key
+    - candidates_entered
+    - candidates_advanced
+    - job_family_key
+  precomputed_upstream:
+    - column: candidates_entered / candidates_advanced
+      note: "Cohort counts pre-aggregated upstream. Safe to pre-aggregate because these are counts, not medians."
+
+semantic_model:
+  data_type: percentage
+  format_string: "0.0%"
+  aggregation: non_additive
+  default_filters:
+    - "cohort_matured_flag = TRUE"
+  supported_slicers:
+    - stage_pair
+    - job_family
+    - business_unit
+    - source_channel
+
+governance:
+  known_pitfalls:
+    - "The most common error is a same-period denominator. If someone reports conversion without a cohort, the number is wrong whenever volume moves."
+    - "Diagnostic split matters: weak application-to-screen is a SOURCING problem; weak interview-to-offer is usually a CALIBRATION problem between recruiter and hiring manager. Different interventions."
+    - "Recent cohorts are immature and will show artificially low conversion. Enforce the maturity flag."
+  restatement_risk: medium
+  related_metrics: [M05, M06, M08, M09]

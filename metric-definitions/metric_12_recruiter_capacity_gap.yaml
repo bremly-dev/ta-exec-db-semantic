@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------
+# Metric Definition — M12
+# ---------------------------------------------------------------
+metric_id: M12
+name: recruiter_capacity_gap
+display_name: "Recruiter Capacity Gap"
+business_area: "Recruiter Capacity"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    The difference between the recruiting effort the current requisition load
+    demands and the effort the team actually has available.
+  executive_question: "Do we need more recruiters, and how many?"
+
+calculation:
+  formula: |
+    Demand Hours    = SUM( Open Reqs x Estimated Hours per Req by complexity )
+    Available Hours = SUM( Recruiter FTE x Productive Hours per Period )
+
+    Capacity Gap = Demand Hours - Available Hours
+    Utilisation % = Demand Hours / Available Hours
+  measurement_window:
+    type: point_in_time
+    detail: "Current week, with forward projection over the next 4-8 weeks and a scenario toggle."
+    rationale: >
+      A capacity gap is only actionable if it is forward-looking — hiring a
+      recruiter takes months, so a gap measured only for today arrives too late
+      to act on. The forward projection is what turns this into a business case.
+  notes:
+    - "SIGN CONVENTION — LOCKED: a POSITIVE gap means demand exceeds capacity (short-staffed). Document this on the page. This is the single most common source of misreading on a capacity tile."
+    - "Productive hours must already net out admin time, leave, and non-req work. State the assumption openly."
+    - "Add a simple scenario control (add two recruiters / demand rises 15%). Capacity numbers persuade far better when leadership can test them."
+
+source:
+  primary_table: fct_recruiter_capacity
+  supporting_tables:
+    - fct_requisition
+    - gold_dim_recruiter
+    - gold_ref_role_complexity
+  grain: "One row per recruiter x week"
+  key_columns:
+    - recruiter_key
+    - week_start_date
+    - demand_hours
+    - available_hours
+    - fte_factor
+  precomputed_upstream:
+    - column: demand_hours
+      note: "Open reqs x estimated hours by complexity, resolved in gold ETL."
+    - column: available_hours
+      note: "FTE x productive hours, already net of leave and admin."
+
+semantic_model:
+  data_type: decimal
+  format_string: "#,##0.0;-#,##0.0"
+  aggregation: additive
+  default_filters: []
+  supported_slicers:
+    - recruiter
+    - recruiting_team
+    - business_unit
+    - week
+
+governance:
+  known_pitfalls:
+    - "Sign convention reversal is the top failure mode. Test it explicitly before release."
+    - "Estimated hours per req is an assumption, not a measurement. Recalibrate it periodically against actual effort or the whole business case decays."
+    - "High utilisation with LOW throughput means a process problem, not a staffing problem. Never present this metric without M13."
+  restatement_risk: medium
+  related_metrics: [M11, M13, M03]

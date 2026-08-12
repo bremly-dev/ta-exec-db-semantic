@@ -1,0 +1,77 @@
+# ---------------------------------------------------------------
+# Metric Definition — M10
+# ---------------------------------------------------------------
+metric_id: M10
+name: offer_renege_rescind_rate
+display_name: "Offer Renege & Rescind Rate"
+business_area: "Offer Performance"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    The percentage of accepted offers that never turn into a start — either the
+    candidate withdrew after accepting (renege) or the company withdrew the offer
+    (rescind).
+  executive_question: "Why do accepted offers not become starts?"
+
+calculation:
+  formula: |
+    Renege Rate  = Accepted offers that did not start (candidate-initiated)
+                 / Accepted Offers
+
+    Rescind Rate = Accepted offers withdrawn by company
+                 / Accepted Offers
+  measurement_window:
+    type: cohort
+    detail: >
+      Cohort window: offers accepted between 60 days ago and 12 months ago —
+      i.e. rolling 12 months, ending 60 days before today so every offer has had
+      time to resolve into a start or a non-start.
+    rationale: >
+      Recently accepted offers have not yet reached their start date, so they
+      cannot appear in the numerator but would sit in the denominator. Including
+      them mathematically depresses the rate. Ending the window 60 days back is
+      what makes the cohort observable — the same maturity logic as M14.
+  notes:
+    - "Track renege and rescind SEPARATELY. They have opposite causes and opposite owners."
+    - "GOVERNANCE: because reneges and rescinds arrive in later refreshes, hire counts restate between refreshes. Surface an 'as of' note and a restatement indicator on the page."
+    - "This is the gap between the number TA reports and the number the business feels."
+
+source:
+  primary_table: fct_offer
+  supporting_tables:
+    - fct_hire
+    - fct_offer_status_history
+  grain: "One row per accepted offer"
+  key_columns:
+    - offer_id
+    - offer_accepted_date
+    - expected_start_date
+    - actual_start_date
+    - non_start_reason_type
+  precomputed_upstream:
+    - column: cohort_matured_flag
+      note: "TRUE when the offer's expected start date is at least 60 days in the past."
+
+semantic_model:
+  data_type: percentage
+  format_string: "0.0%"
+  aggregation: non_additive
+  default_filters:
+    - "offer_status = 'accepted'"
+    - "cohort_matured_flag = TRUE"
+  supported_slicers:
+    - job_family
+    - business_unit
+    - recruiter
+    - non_start_reason_type
+
+governance:
+  known_pitfalls:
+    - "If starts are only a status on the offer record rather than a separate fact, point this metric entirely at fct_offer and drop fct_hire."
+    - "A team can hit accepted-offer plan and still miss headcount if reneges run high. This metric is what makes M01 honest."
+    - "Leadership discovering restatement on their own is far more damaging than TA disclosing it up front."
+  restatement_risk: high
+  related_metrics: [M01, M09, M14]

@@ -1,0 +1,88 @@
+# ---------------------------------------------------------------
+# Metric Definition — M14
+# ---------------------------------------------------------------
+metric_id: M14
+name: mature_cohort_new_hire_attrition_60day
+display_name: "Mature-Cohort New Hire Attrition (60-Day)"
+business_area: "Hiring Outcomes"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    The percentage of new hires who leave within 60 days of starting — measured
+    only on cohorts that have actually had 60 days to be observed.
+  executive_question: "Are we hiring the right people, or just hiring fast?"
+
+calculation:
+  formula: |
+    Cohort window = start_date BETWEEN (Today - 60 - 365) AND (Today - 60)
+
+    Eligible cohort    = hires with start_date within the cohort window
+    60-Day Attrition % = Leavers within 60 days of start / Eligible cohort
+  measurement_window:
+    type: cohort
+    detail: >
+      TWO SEPARATE SETTINGS — do not collapse into one filter:
+        observation_period: 60 days from start date
+                            (how long each hire is watched for an exit)
+        cohort_window:      rolling 12 months of start dates,
+                            ending 60 days before today
+                            (which hires are included at all)
+    rationale: >
+      Rolling 12 months rather than year-to-date, because hiring is seasonal and a
+      YTD denominator is tiny in January and stable only by November — the metric's
+      trustworthiness would depend on the calendar. The window ends 60 days back
+      because anyone who started more recently cannot yet appear in the numerator
+      while still sitting in the denominator, which silently pushes the rate down.
+      Ending early is what makes the cohort mature. 60 days rather than 90 isolates
+      hiring and onboarding quality rather than longer-term management fit, and
+      returns a signal about a month sooner.
+  notes:
+    - "The mature-cohort rule is ESSENTIAL. Including hires who have not had time to leave is the most common error in early-attrition reporting."
+    - "Headline the mature cohort. Show recent hires separately as 'in observation' with their own count so nobody thinks they were forgotten."
+    - "Split voluntary vs involuntary — they point to different failures (hiring quality vs onboarding and role clarity)."
+    - "TRADE-OFF: a rolling window smooths a genuine sudden spike. Pair the headline with a monthly cohort trend line so sharp changes stay visible."
+    - "If the business uses a 90-day probation period, run both and headline the one matching probation — but never switch between them."
+
+source:
+  primary_table: fct_new_hire_tenure
+  supporting_tables:
+    - fct_offer
+    - gold_dim_exit_reason
+  grain: "One row per hire, assigned to a start-month cohort"
+  key_columns:
+    - hire_id
+    - start_date
+    - exit_date
+    - exit_type
+    - days_to_exit
+    - cohort_matured_flag
+  precomputed_upstream:
+    - column: days_to_exit
+      note: "Exit date minus start date. Null for hires still employed."
+    - column: cohort_matured_flag
+      note: "TRUE when start_date <= Today - 60 days. Encodes the maturity rule once, upstream."
+
+semantic_model:
+  data_type: percentage
+  format_string: "0.0%"
+  aggregation: non_additive
+  default_filters:
+    - "cohort_matured_flag = TRUE"
+  supported_slicers:
+    - business_unit
+    - job_family
+    - exit_type
+    - recruiter
+    - hiring_manager
+    - cohort_month
+
+governance:
+  known_pitfalls:
+    - "Collapsing the observation period and the cohort window into one filter produces the wrong denominator. They are separate settings."
+    - "Never present this metric without its denominator visible. Small cohorts produce dramatic percentages."
+    - "Do not slice to individual recruiter or manager below a minimum cohort size — the conclusions will not be supportable."
+  restatement_risk: medium
+  related_metrics: [M04, M10, M13, M15]

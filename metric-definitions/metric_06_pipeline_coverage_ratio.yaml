@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------
+# Metric Definition — M06
+# ---------------------------------------------------------------
+metric_id: M06
+name: pipeline_coverage_ratio
+display_name: "Pipeline Coverage Ratio"
+business_area: "Funnel & Conversion"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    How much live, late-stage candidate pipeline exists relative to the roles that
+    need filling. The earliest reliable warning that future delivery will miss.
+  executive_question: "Are we likely to meet future hiring demand?"
+
+calculation:
+  formula: |
+    Pipeline Coverage =
+        Active Candidates at Interview Stage or Later
+      / Open Requisitions
+  measurement_window:
+    type: point_in_time
+    detail: "Snapshot as of today. Trended as a weekly series to show direction."
+    rationale: >
+      Coverage is a stock, not a flow — it describes what exists right now.
+      Averaging it over a period would hide exactly the deterioration it is meant
+      to catch. The weekly trend carries the signal instead.
+  notes:
+    - "Count ACTIVE candidates only. Withdrawn and rejected must be excluded or the metric silently inflates."
+    - "Calculate by job family and business unit, not just in total. A healthy overall ratio hides a critical function with no pipeline at all."
+    - "Set the target ratio from your own historical conversion — if roughly one in four onsite candidates is hired, below 4:1 signals shortfall."
+
+source:
+  primary_table: fct_application_stage
+  supporting_tables:
+    - fct_requisition
+  grain: "Aggregated to job family x business unit, as of snapshot date"
+  key_columns:
+    - application_id
+    - current_stage_key
+    - application_status
+    - requisition_id
+    - requisition_status
+  precomputed_upstream:
+    - column: is_late_stage_active
+      note: "Flag for candidates at interview stage or later AND still active. Encodes the stage threshold once, upstream."
+
+semantic_model:
+  data_type: decimal
+  format_string: "0.0\"x\""
+  aggregation: non_additive
+  default_filters:
+    - "application_status = 'active'"
+    - "requisition_status = 'open'"
+  supported_slicers:
+    - business_unit
+    - job_family
+    - critical_role_flag
+
+governance:
+  known_pitfalls:
+    - "The stage threshold ('interview or later') is a business decision. Change it and every historical value changes — version it."
+    - "One candidate active on several requisitions inflates the numerator. Decide whether to count applications or distinct candidates."
+    - "Ratio is undefined where open reqs = 0. Handle the divide-by-zero explicitly or slices will show errors."
+  restatement_risk: low
+  related_metrics: [M02, M07, M08]

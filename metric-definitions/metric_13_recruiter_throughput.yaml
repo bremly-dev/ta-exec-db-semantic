@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------
+# Metric Definition — M13
+# ---------------------------------------------------------------
+metric_id: M13
+name: recruiter_throughput
+display_name: "Recruiter Throughput (Hires per Recruiter)"
+business_area: "Recruiter Capacity"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    How many hires each recruiter delivers per period, normalised for role
+    complexity.
+  executive_question: "Is this a staffing problem or a process problem?"
+
+calculation:
+  formula: |
+    Throughput = Hires Delivered / Recruiter FTE in Period
+
+    Complexity-Adjusted Throughput =
+        SUM( Hires x Complexity Weight ) / Recruiter FTE
+  measurement_window:
+    type: rolling
+    detail: "Rolling 3 months."
+    rationale: >
+      Monthly recruiter throughput is too volatile to interpret — a recruiter can
+      close three roles in one week and none the next through no change in
+      performance. Three months is the shortest window where the number reflects
+      capability rather than timing.
+  notes:
+    - "Present as a TEAM DISTRIBUTION on the executive page, not an individual ranking. Individual detail belongs in the recruiter scorecard, alongside quality measures."
+    - "Read together with M11 and M12: high load + high throughput means hire recruiters; high load + low throughput means fix the process first."
+    - "Used alone this metric pushes teams to fill fast rather than fill well. It sits next to M14 and M15 for exactly that reason."
+
+source:
+  primary_table: fct_hire
+  supporting_tables:
+    - fct_recruiter_performance
+    - gold_dim_recruiter
+    - gold_ref_role_complexity
+  grain: "One row per recruiter x period"
+  key_columns:
+    - recruiter_key
+    - period_month
+    - hires_delivered
+    - weighted_hires
+    - fte_factor
+  precomputed_upstream:
+    - column: weighted_hires
+      note: "Hires x complexity weight, resolved in gold ETL using the same weights as M11 and M12."
+
+semantic_model:
+  data_type: decimal
+  format_string: "#,##0.0"
+  aggregation: non_additive
+  default_filters: []
+  supported_slicers:
+    - recruiter
+    - recruiting_team
+    - business_unit
+    - job_family
+
+governance:
+  known_pitfalls:
+    - "If starts are a status on fct_offer rather than a separate fact, point this at fct_offer instead."
+    - "Part-time and mid-period joiners need an accurate FTE factor or their throughput looks artificially low."
+    - "Never publish as an individual leaderboard at executive level. It invites performance conclusions the data cannot support on its own."
+  restatement_risk: medium
+  related_metrics: [M11, M12, M14, M15]

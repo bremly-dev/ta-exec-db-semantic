@@ -1,0 +1,80 @@
+# ---------------------------------------------------------------
+# Metric Definition — M04
+# ---------------------------------------------------------------
+metric_id: M04
+name: median_time_to_fill_mix_adjusted
+display_name: "Median Time to Fill (Mix-Adjusted)"
+business_area: "Recruitment Operations"
+status: draft
+version: "1.0"
+last_updated: 2026-08-11
+
+definition:
+  business: >
+    How long it typically takes to fill a role, from requisition approval to offer
+    acceptance — adjusted so that a change in the type of roles being hired does
+    not look like a change in team performance.
+  executive_question: "How fast are we, genuinely?"
+
+calculation:
+  formula: |
+    -- Upstream (gold ETL, NOT the semantic model):
+    time_to_fill_days -> precomputed column on fct_offer
+                         (offer accepted date - requisition approved date)
+
+    -- Semantic model:
+    Median Time to Fill = MEDIAN( fct_offer[time_to_fill_days] )
+                          FILTERED TO accepted offers only
+
+    Mix-Adjusted TTF = SUM( Median time_to_fill_days by job family
+                            x Baseline mix weight )
+  measurement_window:
+    type: rolling
+    detail: "Rolling 90 days of accepted offers, with a period selector for month / quarter / year."
+    rationale: >
+      Monthly medians on low fill volumes are unstable — a handful of closes can
+      move the number several days. A rolling 90-day window holds the sample size
+      steady while still reacting within a quarter.
+  notes:
+    - "Filter to accepted offers. The offer fact also holds extended, declined, and withdrawn rows, which have no meaningful time to fill."
+    - "Watch multiple offers per requisition. A declined-then-reoffered req produces two rows; only the accepted one may reach this measure."
+    - "Use MEDIAN, not average. One 200-day executive search distorts an average and starts the wrong conversation."
+    - "Do NOT rebuild the date subtraction in DAX. Two versions of the same calculation is how the number starts disagreeing with itself."
+    - "Medians do not pre-aggregate. Keep the day count at row grain — never precompute a median at a fixed grain."
+    - "Publish the raw unadjusted median as a secondary figure. Hiding it damages trust."
+
+source:
+  primary_table: fct_offer
+  supporting_tables:
+    - gold_ref_role_mix_baseline
+  grain: "One row per offer (measure scoped to accepted offers)"
+  key_columns:
+    - offer_id
+    - requisition_id
+    - offer_status
+    - job_family_key
+    - complexity_tier
+  precomputed_upstream:
+    - column: time_to_fill_days
+      note: "Computed in gold ETL. Clock start = requisition APPROVED date, not posting or created date."
+
+semantic_model:
+  data_type: days
+  format_string: "#,##0"
+  aggregation: non_additive
+  default_filters:
+    - "offer_status = 'accepted'"
+  supported_slicers:
+    - business_unit
+    - job_family
+    - complexity_tier
+    - recruiter
+
+governance:
+  known_pitfalls:
+    - "Clock start and clock pauses are now invisible to the semantic model. Both MUST be documented in the gold contract or nobody downstream can explain the number."
+    - "On-hold periods: if not excluded upstream, a req parked for a month looks like a slow fill."
+    - "Multi-hire / evergreen reqs: the tenth hire from one approval date shows a very long time to fill through no fault of the recruiter. Consider excluding from the headline."
+    - "Survivorship bias: only filled roles appear. Cancelled reqs are invisible, so this metric cannot tell you about roles that were given up on."
+  restatement_risk: low
+  related_metrics: [M05, M09, M13]
