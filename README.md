@@ -49,7 +49,6 @@ metric-definitions/
   _schema.yaml                    # shape every metric file follows
   metric_01_....yaml              # one file per metric, M01–M15
 docs/
-  metric-design.md                # why the set works together, what was excluded
 README.md
 CLAUDE.md                         # working conventions for AI-assisted editing
 ```
