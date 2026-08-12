@@ -11,7 +11,7 @@ last_updated: 2026-08-11
 
 definition:
   business: >
-    The number of open requisitions projected to miss their target hire date —
+    The number of open requisitions projected to miss their target_offer_acceptance_date —
     unlikely to reach an accepted offer in time — and the offers those
     requisitions represent.
   executive_question: "What is about to go wrong, and where do I intervene now?"
@@ -21,12 +21,12 @@ calculation:
     For each open requisition:
       Projected Offer-Accept Date = Today + Expected Remaining Days
                                     (based on current stage and job family)
-      At Risk = Projected Offer-Accept Date > Target Hire Date
+      At Risk = Projected Offer-Accept Date > target_offer_acceptance_date
 
     Offers at Risk = COUNT(open reqs where At Risk = TRUE)
   measurement_window:
     type: point_in_time
-    detail: "Evaluated against today's date and each requisition's own target hire date. No historical window."
+    detail: "Evaluated against today's date and each requisition's own target_offer_acceptance_date. No historical window."
     rationale: >
       Risk is a live property of an open requisition, not a period aggregate.
       A rolling or to-date framing would be meaningless — the question is about
