@@ -23,16 +23,16 @@ calculation:
     Days Remaining (Month)  = Last Day of Current Month - Today
     Days Remaining (90-Day) = Today + 90
 
-    Forecast Offers (Next EOM) =
-        Offers Accepted To Date (this month)
+    Forecast Offers (EOM) =
+        Offers Accepted (EOM)
       + (Open Reqs x Expected Offer-Accept Probability within Days Remaining (Month))
 
     Forecast Offers (Next 90 Days) =
         Offers Accepted To Date (rolling, within the 90-day window so far)
       + (Open Reqs x Expected Offer-Accept Probability within 90 Days)
 
-    Forecasted Attainment % (Next EOM) =
-        Forecast Offers (Next EOM) / Planned Offers for Current Month
+    Forecasted Attainment % (EOM) =
+        Forecast Offers (EOM) / Planned Offers for Current Month (EOM)
 
     Forecasted Attainment % (Next 90 Days) =
         Forecast Offers (Next 90 Days) / Planned Offers for the 90-Day Window
