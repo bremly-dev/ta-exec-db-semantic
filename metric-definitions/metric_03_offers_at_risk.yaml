@@ -47,7 +47,7 @@ source:
     - requisition_id
     - requisition_status
     - current_stage
-    - target_hire_date
+    - target_offer_acceptance_date
     - job_family_key
     - critical_role_flag
   precomputed_upstream:
