@@ -2,42 +2,62 @@
 # Metric Definition — M02
 # ---------------------------------------------------------------
 metric_id: M02
-name: forecasted_attainment_next_eom
-display_name: "Forecasted Attainment (Next End of Month)"
+name: forecasted_attainment_short_horizon
+display_name: "Forecasted Attainment (Month-End & 90-Day)"
 business_area: "Hiring Plan & Delivery"
 status: draft
-version: "1.0"
-last_updated: 2026-08-11
+version: "1.1"
+last_updated: 2026-08-12
 
 definition:
   business: >
-    Where offer accepts are projected to stand at the end of the current month if
-    the pipeline and current pace continue. A short-horizon forecast leadership can
-    sanity-check against the pipeline they already see.
-  executive_question: "Are we on pace to hit this month?"
+    Where offer accepts are projected to land if the pipeline and current pace
+    continue — checked at two horizons. The month-end view shows what's
+    controllable this week. The 90-day view shows whether the wider quarter is
+    genuinely on track, since some roles will clear soon but just not before
+    month-end.
+  executive_question: "Are we on pace to hit this month, and the quarter ahead of it?"
 
 calculation:
   formula: |
-    Days Remaining = Last Day of Current Month - Today
+    Days Remaining (Month)  = Last Day of Current Month - Today
+    Days Remaining (90-Day) = Today + 90
 
     Forecast Offers (Next EOM) =
         Offers Accepted To Date (this month)
-      + (Open Reqs x Expected Offer-Accept Probability within Days Remaining)
+      + (Open Reqs x Expected Offer-Accept Probability within Days Remaining (Month))
+
+    Forecast Offers (Next 90 Days) =
+        Offers Accepted To Date (rolling, within the 90-day window so far)
+      + (Open Reqs x Expected Offer-Accept Probability within 90 Days)
 
     Forecasted Attainment % (Next EOM) =
         Forecast Offers (Next EOM) / Planned Offers for Current Month
+
+    Forecasted Attainment % (Next 90 Days) =
+        Forecast Offers (Next 90 Days) / Planned Offers for the 90-Day Window
+        (sum of the phased monthly plan across those same 90 days)
   measurement_window:
     type: point_in_time
-    detail: "Forecast horizon = today through last day of current month. Refreshed and discussed weekly."
+    detail: >
+      Two forecast horizons evaluated as of today: (1) through the end of the
+      current month, and (2) through the next 90 days on a rolling basis. Both
+      refreshed and discussed weekly, side by side.
     rationale: >
-      A short horizon is checkable. Leadership can compare the forecast against the
-      pipeline they can see right now, which builds trust in a way a full-year
-      projection never does. It is also the only horizon where action this week
-      still changes the outcome.
+      The month-end horizon is checkable against the pipeline leadership can
+      already see, and it is the only horizon where action this week still
+      changes the outcome. But a short horizon can make a slow-moving senior
+      search look like it is failing, when it will really land in 45 days
+      instead of 20. The 90-day view catches that distinction: a req that
+      misses month-end but clears comfortably within 90 days is a timing issue,
+      not a delivery risk. Reading both together tells leadership whether a
+      miss is "will land soon" or "genuinely behind."
   notes:
-    - "Probability must be scoped to days remaining in the month, not a generic full-cycle rate. A req with 35 days typical time-to-accept and 6 days left is unlikely to land THIS month even if very likely to land next month."
-    - "Use offer-accept-rate-by-elapsed-time curves per job family. A flat rate will systematically over-forecast late in the month."
-    - "Present as a range (conservative / expected) where data supports it. A single point estimate invites false precision."
+    - "Both horizons reuse the SAME offer-accept-probability curve, scoped to the relevant days remaining. Do not build two separate probability models — that is how the two numbers start disagreeing for reasons nobody can explain."
+    - "Planned Offers for the 90-day window is the sum of the phased monthly plan across those 90 days, not a separately entered plan line. It must reconcile back to the monthly plan or the two attainment percentages will not tie out."
+    - "Present month-end and 90-day attainment side by side, not on separate pages. The gap between them is the signal, not either number alone."
+    - "Present as a range (conservative / expected) where data supports it, for both horizons. A single point estimate invites false precision."
+    - "Use offer-accept-rate-by-elapsed-time curves per job family. A flat rate will systematically over-forecast late in either window."
 
 source:
   primary_table: fct_requisition
@@ -45,7 +65,7 @@ source:
     - fct_offer
     - fct_hiring_plan
     - gold_ref_fill_benchmark
-  grain: "Evaluated at requisition grain, rolled up to business unit x job family x month"
+  grain: "Evaluated at requisition grain, rolled up to business unit x job family x horizon"
   key_columns:
     - requisition_id
     - requisition_status
@@ -54,23 +74,26 @@ source:
     - job_family_key
   precomputed_upstream:
     - column: offer_accept_probability_curve
-      note: "Historical accept rate by elapsed days, per job family. Governed reference, reviewed by TA leadership."
+      note: "Historical accept rate by elapsed days, per job family. Same curve feeds both horizons. Governed reference, reviewed by TA leadership."
 
 semantic_model:
   data_type: percentage
   format_string: "0.0%"
   aggregation: non_additive
   default_filters:
-    - "requisition_status = 'open'"
+    - "requisition_status = 'open' (both horizons evaluate the same open-requisition base)"
   supported_slicers:
     - business_unit
     - job_family
     - critical_role_flag
+    - forecast_horizon
 
 governance:
   known_pitfalls:
     - "This is the one metric that spans both plan grain and requisition grain. Probabilities are computed per req, then aggregated to meet the plan."
+    - "The two horizons must share the same probability curve and the same open-requisition base. Divergent inputs make the two attainment percentages incomparable, which defeats the reason for reporting them together."
+    - "If 90-day Planned Offers is built as a new number instead of summed from the phased plan, it will silently drift from M01's plan baseline over time."
     - "Do not over-engineer the probability model in v1. A transparent, explainable rule beats an accurate black box on an executive page."
-    - "Forecast accuracy should itself be tracked — compare prior forecasts against actuals monthly, or the number will quietly lose credibility."
+    - "Forecast accuracy should itself be tracked — compare prior forecasts against actuals monthly, for both horizons, or the number will quietly lose credibility."
   restatement_risk: medium
   related_metrics: [M01, M03, M06]
