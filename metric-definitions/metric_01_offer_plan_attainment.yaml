@@ -2,8 +2,8 @@
 # Metric Definition — M01
 # ---------------------------------------------------------------
 metric_id: M01
-name: offer_plan_attainment_to_date
-display_name: "Offer Plan Attainment (To Date)"
+name: plan_attainment_to_date
+display_name: "Plan Attainment (To Date)"
 business_area: "Hiring Plan & Delivery"
 status: draft
 version: "1.0"
@@ -18,16 +18,15 @@ definition:
 
 calculation:
   formula: |
-    Offer Plan Attainment % =
+    Plan Attainment % =
         Actual Offers Accepted To Date
       / Planned Offers To Date
   measurement_window:
     type: to_date
-    detail: "Fiscal year to date, with a To Date / Full Year toggle on the page."
+    detail: "Year to date, To Date."
     rationale: >
       Executives compare against commitment, and commitment is set for the year.
-      A to-date view is the only fair comparison mid-year; the Full Year toggle
-      exists because leadership asks both questions in the same meeting.
+      A to-date view is the only fair comparison mid-year.
   notes:
     - "Counted at accepted offer, not start date. Accepted offer is earlier and more controllable; starts lag by weeks and would make the headline stale."
     - "Planned-to-date comes from the phased monthly plan, NOT full-year plan divided by twelve. Hiring plans are rarely flat."
