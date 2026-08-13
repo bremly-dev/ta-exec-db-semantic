@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------
 metric_id: M01
 name: plan_attainment_to_date
-display_name: "Plan Attainment (To Date)"
+display_name: "Plan Attainment (YTD)"
 business_area: "Hiring Plan & Delivery"
 status: draft
 version: "1.0"
@@ -19,11 +19,11 @@ definition:
 calculation:
   formula: |
     Plan Attainment % =
-        Actual Offers Accepted To Date
-      / Planned Offers To Date
+        Actual Offers Accepted YTD
+      / Planned Offers YTD
   measurement_window:
     type: to_date
-    detail: "Year to date, To Date."
+    detail: "Year YTD, YTD."
     rationale: >
       Executives compare against commitment, and commitment is set for the year.
       A to-date view is the only fair comparison mid-year.
